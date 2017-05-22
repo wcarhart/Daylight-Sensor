@@ -1,4 +1,3 @@
-
 // include necessary libraries
 #include <xc.h>
 #include <p18f4321.h>
@@ -152,7 +151,7 @@ void main(void){
         lcdAdd("M");
 
         // used for pausing execution
-        if(!PORTDbits.RD0){
+        if (!PORTDbits.RD0) {
             INTCONbits.TMR0IE = 0;
             __delay_ms(5);
             while(!PORTDbits.RD0);
@@ -166,22 +165,20 @@ void main(void){
 }
 
 
-char* char2ASCII(unsigned char s){
+char* char2ASCII(unsigned char s) {
     char disp[3];
 
-    disp[0] = s/10;
-    disp[1] = s%10;
-
-    disp[0] +='0';
-    disp[1] +='0';
-
-    disp[2]='\0';
+    disp[0] = s / 10;
+    disp[1] = s % 10;
+    disp[0] += '0';
+    disp[1] += '0';
+    disp[2] = '\0';
 
     return disp;
 }
 
 
-void send_nib(char nibble){
+void send_nib(char nibble) {
     PORTCbits.RC7 = (nibble >> 3) & 1;
     PORTCbits.RC6 = (nibble >> 2) & 1;
     PORTCbits.RC5 = (nibble >> 1) & 1;
@@ -192,28 +189,28 @@ void send_nib(char nibble){
 }
 
 
-void send_byte(char data){
+void send_byte(char data) {
     send_nib(data >> 4);
     send_nib(data & 0xF);
 }
 
 
-void lcdAdd(char text[]){
+void lcdAdd(char text[]) {
     PORTCbits.RC0 = 1;                  // Set LCD to data mode
-    for (int i = 0; text[i] != 0; i++){ // Iterate over string
+    for (int i = 0; text[i] != 0; i++) {// Iterate over string
         send_byte(text[i]);             // Send each character of string
         __delay_us(46);
     }
 }
 
-void lcdWrite(char text[]){
+void lcdWrite(char text[]) {
     PORTCbits.RC0 = 0;                  // Set LCD to program mode
     send_byte(0b00000001);              // Clear display
     __delay_us(1640);
     send_byte(0b00000010);              // Return cursor to home
     __delay_us(1640);
     PORTCbits.RC0 = 1;                  // Set LCD to data mode
-    for (int i = 0; text[i] != 0; i++){ // Iterate over string
+    for (int i = 0; text[i] != 0; i++) {// Iterate over string
         send_byte(text[i]);             // Send each character of string
         __delay_us(46);
     }
@@ -222,17 +219,17 @@ void lcdWrite(char text[]){
 /*
  * interrupt routine -- update time
  */
-void interrupt timerReset(void){
+void interrupt timerReset(void) {
     asm("MOVLW 0xB1");
     asm("MOVWF TMR0H");
     asm("MOVLW 0xC6");
     asm("MOVWF TMR0L");
     asm("BCF INTCON, 2"); //clear interrupt flag
     ++time;
-    hours = ((time/360000) % 12) + 1;
-    minutes = (time%360000)/6000;
-    seconds = ((time%360000)%6000)/100;
-    decimals = (((time%360000)%6000)%100);
+    hours = ((time / 360000) % 12) + 1;
+    minutes = (time % 360000) / 6000;
+    seconds = ((time % 360000) % 6000) / 100;
+    decimals = (((time % 360000) % 6000) % 100);
     if (time % 50 == 0) {
         colons = (colons + 1) % 2;
     }
