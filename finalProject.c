@@ -12,7 +12,7 @@
 // internal frequency definition
 #define _XTAL_FREQ 8000000
 
-// define local alias
+// define local aliases
 #define C0 LATCbits.LC0
 #define C1 LATCbits.LC1
 #define C2 LATCbits.LC2
@@ -23,21 +23,20 @@
 #define C7 LATCbits.LC7
 
 // forward-declare function prototypes
-void send_nib(char nibble);
-void send_byte(char data);
+void sendNibble(char nibble);
+void sendByte(char data);
 void lcdWrite(char text[]);
 char* char2ASCII(unsigned char temp);
 void lcdAdd(char text[]);
 
 // define globals
-unsigned long time=0x00000000;
+unsigned long time = 0x00000000;
 unsigned char hours = 0x00;
 unsigned char minutes = 0x00;
 unsigned char seconds = 0x00;
 unsigned char decimals = 0x00;
 int colons = 1;
 int AMPM = 1;
-
 
 void main(void){
     // set up analog/digital, input/output
@@ -51,55 +50,76 @@ void main(void){
     // set up processor frequency
     OSCCONbits.IRCF = 0b111;
 
-    ADCON0bits.CHS0 = 0;        // ADCON0 bit 2 Channel Select
-    ADCON0bits.CHS1 = 0;        // ADCON0 bit 3 Channel Select
-    ADCON0bits.CHS2 = 0;        // ADCON0 bit 4 Channel Select
-    ADCON0bits.CHS3 = 0;        // ADCON0 bit 5 Channel Select
+    // select channel on ADCON0
+    ADCON0bits.CHS0 = 0;
+    ADCON0bits.CHS1 = 0;
+    ADCON0bits.CHS2 = 0;
+    ADCON0bits.CHS3 = 0;
     
-    ADCON2bits.ADFM = 1;        // Result Format is Right Justified
-    ADCON2bits.ACQT0 = 1;       // Acquisition Time Select bit 3 = 2TAD
-    ADCON2bits.ACQT1 = 0;       // Acquisition Time Select bit 4 = 2TAD
-    ADCON2bits.ACQT2 = 0;       // Acquisition Time Select bit 5 = 2TAD
-    ADCON2bits.ADCS0 = 0;       // Conversion Clock Select bit 0 = FOSC/2
-    ADCON2bits.ACQT1 = 0;       // Conversion Clock Select bit 1 = FOSC/2
-    ADCON2bits.ACQT2 = 0;       // Conversion Clock Select bit 2 = FOSC/2
+    // right justify ADC result
+    ADCON2bits.ADFM = 1;
 
-    // Timer/Interrupt Setup
-    INTCONbits.TMR0IE = 1;  // Enable interrupt on timer 1
-    INTCONbits.TMR0IF = 0;  // Clear interrupt flag
-    INTCONbits.GIE = 1;     // Enable interrupts globally
-    T0CONbits.PSA = 1;
-    T0CONbits.T08BIT = 0;
-    T0CONbits.T0CS = 0;
-    T0CONbits.TMR0ON = 1;
+    // acquisition time = 2TAD
+    ADCON2bits.ACQT0 = 1;
+    ADCON2bits.ACQT1 = 0;
+    ADCON2bits.ACQT2 = 0;
 
-    // LCD setup
+    // set clock to Fosc/2
+    ADCON2bits.ADCS0 = 0;
+    ADCON2bits.ACQT1 = 0;
+    ADCON2bits.ACQT2 = 0;
+
+    // interrupt setup
+    INTCONbits.TMR0IE = 1;      // enable interrupt on TIMER0
+    INTCONbits.TMR0IF = 0;      // clear TIMER0 interrupt flag
+    INTCONbits.GIE = 1;         // enable global interrupts
+
+    // TIMER0 setup
+    T0CONbits.PSA = 1;          // do not assign prescaler to TIMER0
+    T0CONbits.T08BIT = 0;       // use 16bit operation mode for TIMER0
+    T0CONbits.T0CS = 0;         // use internal clock for TIMER0
+    T0CONbits.TMR0ON = 1;       // turn on TIMER0
+
+    /* LCD setup */
     __delay_ms(15);
-    PORTCbits.RC0 = 0;      // Set to LCD to program mode
-    PORTCbits.RC1 = 0;      // Set LCD to write
-    send_nib(0b0011);       // Setup command
+
+    // set LCD to program mode 
+    PORTCbits.RC0 = 0;
+    PORTCbits.RC1 = 0;
+    sendNibble(0b0011);
     __delay_us(4100);
-    send_nib(0b0011);       // Setup command
+    sendNibble(0b0011);
     __delay_us(100);
-    send_nib(0b0011);       // Setup command
+    sendNibble(0b0011);
     __delay_us(5);
-    send_nib(0b0010);       // Set LCD to 4 bit interface
+
+    // set LCD to 4bit operation mode
+    sendNibble(0b0010);
     __delay_us(42);
-    send_byte(0b00100100);  // Set LCD to 1 line and 5 * 10
+
+    // configure LCD to 1 line display, 5x10 dots
+    sendByte(0b00100100);
     __delay_us(42);
-    send_byte(0b00001100);  // Turn on display, turn off cursor and blinking
+
+    // turn on display, disable cursor
+    sendByte(0b00001100);
     __delay_us(42);
-    send_byte(0b00000110);  // Clear display
+
+    // clear display
+    sendByte(0b00000110);
     __delay_us(42);
 
     // start time at 1:00 AM
     time = 4320000;
     
-    // main program loop
+    // hardware initializations
     ADCON0bits.ADON = 1;
-    float result, volt;
     PORTAbits.RA1 = 0;
+
+    // main program loop
+    float result, volt;
     while (1) {
+
         // A-->D conversion
         ADCON0bits.GO = 1;
         while (GO == 1);
@@ -164,7 +184,6 @@ void main(void){
     }
 }
 
-
 char* char2ASCII(unsigned char s) {
     char disp[3];
 
@@ -177,41 +196,52 @@ char* char2ASCII(unsigned char s) {
     return disp;
 }
 
-
-void send_nib(char nibble) {
+void sendNibble(char nibble) {
     PORTCbits.RC7 = (nibble >> 3) & 1;
     PORTCbits.RC6 = (nibble >> 2) & 1;
     PORTCbits.RC5 = (nibble >> 1) & 1;
     PORTCbits.RC4 = nibble & 1;
-    PORTCbits.RC2 = 1;                  // E-clock high
-    __delay_us(1);                      // Delay must exceed 220 ns
-    PORTCbits.RC2 = 0;                  // E-clock low
+
+    // pulse E-Clock
+    PORTCbits.RC2 = 1;
+    __delay_us(1);
+    PORTCbits.RC2 = 0;
 }
 
-
-void send_byte(char data) {
-    send_nib(data >> 4);
-    send_nib(data & 0xF);
+void sendByte(char data) {
+    sendNibble(data >> 4);
+    sendNibble(data & 0xF);
 }
-
 
 void lcdAdd(char text[]) {
-    PORTCbits.RC0 = 1;                  // Set LCD to data mode
-    for (int i = 0; text[i] != 0; i++) {// Iterate over string
-        send_byte(text[i]);             // Send each character of string
+    // set LCD to data mode
+    PORTCbits.RC0 = 1;
+
+    // print string one char at a time
+    for (int i = 0; text[i] != 0; i++) {
+        sendByte(text[i]);
         __delay_us(46);
     }
 }
 
 void lcdWrite(char text[]) {
-    PORTCbits.RC0 = 0;                  // Set LCD to program mode
-    send_byte(0b00000001);              // Clear display
+    // set LCD to program mode
+    PORTCbits.RC0 = 0;
+
+    // clear display
+    sendByte(0b00000001);
     __delay_us(1640);
-    send_byte(0b00000010);              // Return cursor to home
+
+    // reset cursor
+    sendByte(0b00000010);
     __delay_us(1640);
-    PORTCbits.RC0 = 1;                  // Set LCD to data mode
-    for (int i = 0; text[i] != 0; i++) {// Iterate over string
-        send_byte(text[i]);             // Send each character of string
+
+    // set LCD to data mode
+    PORTCbits.RC0 = 1;
+
+    // print string one char at a time
+    for (int i = 0; text[i] != 0; i++) {
+        sendByte(text[i]);
         __delay_us(46);
     }
 }
@@ -225,11 +255,13 @@ void interrupt timerReset(void) {
     asm("MOVLW 0xC6");
     asm("MOVWF TMR0L");
     asm("BCF INTCON, 2"); //clear interrupt flag
+
     ++time;
     hours = ((time / 360000) % 12) + 1;
     minutes = (time % 360000) / 6000;
     seconds = ((time % 360000) % 6000) / 100;
     decimals = (((time % 360000) % 6000) % 100);
+
     if (time % 50 == 0) {
         colons = (colons + 1) % 2;
     }
