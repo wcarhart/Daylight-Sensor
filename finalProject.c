@@ -1,3 +1,9 @@
+/*
+ * ELEC 310 Final Project
+ * Author: Will Carhart
+ * Date: May 15th, 2017
+ */
+
 // include necessary libraries
 #include <xc.h>
 #include <p18f4321.h>
@@ -43,9 +49,7 @@ void main(void){
     ADCON1 = 0x0C;
     TRISA = 0x01;
     TRISC = 0x00;
-    TRISB = 0x00;
     TRISD = 0xFF;
-    PORTB = 0xFF;
     
     // set up processor frequency
     OSCCONbits.IRCF = 0b111;
@@ -66,8 +70,8 @@ void main(void){
 
     // set clock to Fosc/2
     ADCON2bits.ADCS0 = 0;
-    ADCON2bits.ACQT1 = 0;
-    ADCON2bits.ACQT2 = 0;
+    ADCON2bits.ACQS1 = 0;
+    ADCON2bits.ACQS2 = 0;
 
     // interrupt setup
     INTCONbits.TMR0IE = 1;      // enable interrupt on TIMER0
@@ -184,11 +188,11 @@ void main(void){
     }
 }
 
-char* char2ASCII(unsigned char s) {
+char* char2ASCII(unsigned char input) {
     char disp[3];
 
-    disp[0] = s / 10;
-    disp[1] = s % 10;
+    disp[0] = input / 10;
+    disp[1] = input % 10;
     disp[0] += '0';
     disp[1] += '0';
     disp[2] = '\0';
